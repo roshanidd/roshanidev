@@ -1,0 +1,77 @@
+* TERRAFORM LAUNCH EC2 AND SHOW NGINX PAGE
+
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "4.56.0"
+    }
+  }
+}
+
+provider "aws" {
+  region     = "us-west-1"
+  access_key = "AKIAWDJA2CKOCXF7LJDH"
+  secret_key = "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"
+  # Configuration options
+}
+
+resource "aws_instance" "web" {
+  ami                     = data.aws_ami.amazon_linux.id
+  instance_type           = "t2.micro"
+  key_name                = "deployer-key"
+
+user_data = <<EOF
+#!/bin/bash
+sudo yum update -y
+amazon-linux-extras install nginx1
+sudo systemctl start nginx
+sudo systemctl enable nginx>
+EOF
+
+  tags = {
+    Name = "allow_tls"
+  }
+}
+
+resource "aws_security_group" "allow_tls" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic"
+
+  ingress {
+    description      = "TLS from VPC"
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+    }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+}
+
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["amazon"]
+}
+
+resource "aws_key_pair" "deployer" {
+  key_name   = "deployer-key"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDI0F0x9FJslTtJ4GeljjlPr2u6kAvmLPS1Rtbe+tRiVkOSrPxNppzLXWHe/OL9WsGvV17z2PHJ4pbKVoV29zwBacsS/9HuDVdcAuQEb+N0OweC1kBeidoFkVO0FlHZtMosKviXsbVYIHnSqW7E6R1XKo/V8o19M8SUozq2s0MQYozSQ8VN4ABgFO8plxzffH/8fAmAh8amZxlmuVRWtJg+uPXFoNpmGeVw4I8fSasEPpg6YeJ4vlifORUmHcU2GGMjrYQf1tbv8+h3sVTSXWfiwI//SSw7hLXODNctaNC+jeJBFjxVqFYF33Ti5UPooCNgJQLI5ykIE+6fMFMUjV0PKq7RsWoMT6dg/tNyvnIudg+Ts+gB6jiVnW9XaKz/ObL9LiKReu05zWfQOksNBvIt6g3Jv/QYyVg7DzBWs4tvvQgStjC98GxrHOoMlHGj/S9+IR1pfPBMEG2k/shra/OXRhTTZ78Qp9ibHRBV4e75YIMx9TDKeG8lVwMLQz0B9ks= HP@ShreeprasadAgency"
+}
